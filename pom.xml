@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>sibarum.imagelib</groupId>
+    <artifactId>imagelib-wrapper</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+
+    <name>imagelib-wrapper</name>
+    <description>
+        Panama (FFM) bindings for one C ABI over every image format a GUI can show: PNG, JPEG, GIF,
+        WebP, BMP, ICO, TIFF, TGA, PNM and QOI through the Rust `image` crate, and SVG through resvg.
+        Stills and animations decode to the same value. Hand-written downcalls over an eleven-function
+        header (native/include/imagelib.h) — no jextract, no JNI, no code generation. The native
+        library is built from source in native/ (see native/build.sh) and bundled into the jar from
+        native/dist/bin at package time; at runtime it is extracted to a temp dir and loaded.
+    </description>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.11.4</junit.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Bundle the native build output (not committed to git) into the jar, keeping the
+                 per-platform directory names build.sh stages into and NativeLib.java reads back. -->
+            <resource>
+                <directory>native/dist/bin</directory>
+                <targetPath>natives</targetPath>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <target>${maven.compiler.release}</target>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+                <configuration>
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,27 @@
+[package]
+name = "imagelib"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "imagelib"
+crate-type = ["cdylib"]
+
+# Two crates, one ABI. `image` decodes every raster format we care about in pure Rust — no C
+# dependency, so cross-compiling is `cargo build --target ...` and nothing else. `resvg` rasterises
+# SVG through tiny-skia, also pure Rust.
+#
+# AVIF is deliberately absent: `image` can only decode it through libdav1d (a C library), which
+# would put a system dependency back into a build that currently has none. See README.
+[dependencies]
+image = { version = "0.25", default-features = false, features = [
+    "png", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "tga", "pnm", "qoi",
+] }
+resvg = "0.45"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
