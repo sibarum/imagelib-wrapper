@@ -98,6 +98,29 @@ triple to the `case` in `build.sh` and to `NativeLib.platform()` — in both pla
 At runtime the library is extracted from the jar to a temp dir and loaded. Override with
 `-Dimagelib.native.dir=<dir>`. Callers need `--enable-native-access=ALL-UNNAMED` (or their module).
 
+### In a native image
+
+A GraalVM native image can link imagelib in rather than extract the DLL, so the executable is the only file.
+`build.sh` also stages the static library and the arguments that link it (MSVC so far):
+
+```
+native/dist/static/windows-x86_64/imagelib.lib
+native/dist/static/windows-x86_64/imagelib-link.args
+```
+
+Pass both to `native-image`, beside `-H:+ForeignAPISupport`:
+
+```
+-H:NativeLinkerOption=<path>/imagelib.lib  @<path>/imagelib-link.args
+```
+
+Nothing changes on the Java side. `NativeLib` finds the symbols already in the executable and skips the
+extraction, so leave `natives/` out of the image's resources. The args file does two things. First, it exports
+every header function from the executable: FFM's loader lookup finds a symbol in a native image through the export
+table, and without the export the linker drops imagelib entirely, since nothing in the image calls it by name.
+Second, it names the system libraries rustc reports. Tried on Windows with GraalVM 25: `Imagelib.decode` returns
+the same pixels as the DLL, from a folder holding only the executable.
+
 `resvg` is pinned: its `usvg::Options`/`fontdb` surface has moved between releases, so a version bump
 is a deliberate act with a compile behind it, not a range that drifts.
 

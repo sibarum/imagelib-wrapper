@@ -2,6 +2,7 @@ package sibarum.imagelib;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.foreign.SymbolLookup;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -10,9 +11,13 @@ import java.util.Locale;
 /**
  * Locates and loads the {@code imagelib} native library.
  *
- * <p>Search order: the {@code imagelib.native.dir} system property (a directory holding the library),
- * then the bundled classpath resource under {@code /natives/<platform>/}, extracted to a temp
- * directory. Loading is idempotent and thread-safe.
+ * <p>Search order: the library already linked into the executable, then the {@code imagelib.native.dir}
+ * system property (a directory holding the library), then the bundled classpath resource under
+ * {@code /natives/<platform>/}, extracted to a temp directory. Loading is idempotent and thread-safe.
+ *
+ * <p>Linked in is the GraalVM native image built with the static library (README, "In a native
+ * image"): its symbols are in the executable, where the loader lookup finds them, and there is no DLL
+ * in the image to extract. Anywhere else nothing is found there, and loading goes on as before.
  *
  * <p>One library and no dependency order to get right — the whole reason the native side is Rust.
  * Both decoders compile in, so there is nothing beside it to stage and nothing on the host to find.
@@ -23,6 +28,10 @@ final class NativeLib {
 
     static synchronized void ensureLoaded() {
         if (loaded) {
+            return;
+        }
+        if (SymbolLookup.loaderLookup().find("img_probe").isPresent()) {
+            loaded = true;   // linked into this executable
             return;
         }
         String name = libraryName();

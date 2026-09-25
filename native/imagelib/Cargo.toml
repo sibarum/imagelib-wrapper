@@ -6,7 +6,8 @@ publish = false
 
 [lib]
 name = "imagelib"
-crate-type = ["cdylib"]
+# cdylib for the JVM, which extracts and loads it; staticlib for a native image, which links it in (README).
+crate-type = ["cdylib", "staticlib"]
 
 # Two crates, one ABI. `image` decodes every raster format we care about in pure Rust — no C
 # dependency, so cross-compiling is `cargo build --target ...` and nothing else. `resvg` rasterises
