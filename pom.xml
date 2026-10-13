@@ -6,7 +6,7 @@
 
     <groupId>sibarum.imagelib</groupId>
     <artifactId>imagelib-wrapper</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 
     <name>imagelib-wrapper</name>
     <description>
