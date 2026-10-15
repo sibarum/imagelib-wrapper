@@ -65,7 +65,7 @@ class ImagelibTest {
         return source.getBytes(StandardCharsets.UTF_8);
     }
 
-    private static byte[] encode(String format, int w, int h, int argb) {
+    static byte[] encode(String format, int w, int h, int argb) {
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {

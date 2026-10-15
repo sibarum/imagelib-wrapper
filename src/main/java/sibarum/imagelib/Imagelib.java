@@ -132,6 +132,41 @@ public final class Imagelib {
     }
 
     /**
+     * Open a raster file to be played frame by frame, rather than decoded whole: see {@link Animation}. The bytes are
+     * copied, so {@code bytes} is free when this returns. A still opens too, as a run of one. The caller closes it.
+     */
+    public static Animation animate(byte[] bytes) {
+        requireBytes(bytes);
+        MemorySegment handle;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment in = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+            try {
+                handle = (MemorySegment) CApi.img_anim_open.invokeExact(in, (long) bytes.length);
+            } catch (Throwable t) {
+                throw downcallFailed("img_anim_open", t);
+            }
+        }
+        if (handle == null || handle.address() == 0) {
+            throw new ImageException("could not open the animation: " + lastError());
+        }
+        try {
+            return new Animation(handle);
+        } catch (RuntimeException e) {
+            try {
+                CApi.img_anim_close.invokeExact(handle);
+            } catch (Throwable t) {
+                e.addSuppressed(t);
+            }
+            throw e;
+        }
+    }
+
+    /** {@link #animate(byte[])} of a file's contents. */
+    public static Animation animate(Path file) {
+        return animate(readAll(file));
+    }
+
+    /**
      * Rasterise an SVG document at exactly {@code width} x {@code height} px, scaling each axis to
      * fill the box. A caller that wants the aspect ratio kept asks {@link #svgSize} and chooses a box
      * that has it — this library will not guess at a layout it cannot see.
@@ -202,7 +237,7 @@ public final class Imagelib {
     }
 
     /** The native decoder's own account of the last failure on this thread, or a stand-in. */
-    private static String lastError() {
+    static String lastError() {
         MemorySegment message;
         try {
             message = (MemorySegment) CApi.img_last_error.invokeExact();
@@ -217,11 +252,11 @@ public final class Imagelib {
 
     // --- plumbing -------------------------------------------------------------------------------
 
-    private interface Call<T> {
+    interface Call<T> {
         T get() throws Throwable;
     }
 
-    private static <T> T call(Call<T> call, String name) {
+    static <T> T call(Call<T> call, String name) {
         try {
             return call.get();
         } catch (Throwable t) {

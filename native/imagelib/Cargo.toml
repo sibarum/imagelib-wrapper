@@ -26,3 +26,7 @@ opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+
+# The tests make their own animated WebP and APNG, which `image` reads but cannot write.
+[dev-dependencies]
+png = "0.18"

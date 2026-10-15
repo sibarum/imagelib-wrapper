@@ -32,6 +32,14 @@ Animation frames arrive **fully composited** — GIF disposal methods and WebP b
 by the decoder. A consumer draws frame *i* and never reasons about frame *i-1*. Format knowledge
 stops at this boundary; that is what the boundary is for.
 
+**Playing rather than decoding.** `decode` holds every frame at once, which is fine for a sticker and
+not for a four-minute GIF. `Imagelib.animate` opens the same file as an `Animation`: `next()` decodes
+one composited frame into a canvas the handle owns, `pixels()` reads it where it lies, and `rewind()`
+starts again. One canvas is held however long the run. The timeline (`count`, `delayMillis`, `loops`)
+is read at open by walking the file's blocks without decoding a pixel, so a player knows the length
+before frame 0. It is forward only, because a GIF or APNG frame is drawn over the ones before it; a
+player that seeks back fast keeps the frames it made.
+
 ## Formats
 
 | | |

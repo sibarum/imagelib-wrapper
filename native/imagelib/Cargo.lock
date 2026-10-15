@@ -228,6 +228,7 @@ name = "imagelib"
 version = "0.1.0"
 dependencies = [
  "image",
+ "png 0.18.1",
  "resvg",
 ]
 

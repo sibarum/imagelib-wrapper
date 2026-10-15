@@ -11,7 +11,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /**
  * Raw FFM downcalls onto {@code native/include/imagelib.h}. Hand-written, one line per function, in
- * the header's order — eleven of them, which is the whole of the boundary.
+ * the header's order, which is the whole of the boundary.
  *
  * <p>{@code size_t} is bound as {@code JAVA_LONG} and every {@code uint32_t} as {@code JAVA_INT}; a
  * frame count or a pixel dimension that overflows a signed int is a file no decoder would have
@@ -48,6 +48,21 @@ final class CApi {
     static final MethodHandle img_pixels =
             h("img_pixels", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT));
     static final MethodHandle img_free = h("img_free", FunctionDescriptor.ofVoid(ADDRESS));
+
+    // streaming
+    static final MethodHandle img_anim_open =
+            h("img_anim_open", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_LONG));
+    static final MethodHandle img_anim_width = h("img_anim_width", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    static final MethodHandle img_anim_height = h("img_anim_height", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    static final MethodHandle img_anim_count = h("img_anim_count", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    static final MethodHandle img_anim_delay_ms =
+            h("img_anim_delay_ms", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
+    static final MethodHandle img_anim_loops = h("img_anim_loops", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    static final MethodHandle img_anim_next = h("img_anim_next", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    static final MethodHandle img_anim_pixels =
+            h("img_anim_pixels", FunctionDescriptor.of(ADDRESS, ADDRESS));
+    static final MethodHandle img_anim_rewind = h("img_anim_rewind", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+    static final MethodHandle img_anim_close = h("img_anim_close", FunctionDescriptor.ofVoid(ADDRESS));
 
     static final MethodHandle img_last_error = h("img_last_error", FunctionDescriptor.of(ADDRESS));
 
