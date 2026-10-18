@@ -59,9 +59,9 @@ decides, so `rasterize` makes the box its viewport rather than scaling up from u
 better answer.
 
 A document that declares a size of **zero** is refused, because that is an explicit answer rather than
-an absent one. `vexelray-icons/vexelray-marks-sprite.svg` is exactly this: `width="0"` with every mark
+an absent one. `vexelray-icons/marks/vexelray-marks-sprite.svg` is exactly this: `width="0"` with every mark
 inside `<defs>`, meant to be inlined into HTML and `<use>`d. It is a symbol library, not a picture, and
-rendering it would produce an empty texture and call it success. The standalone `svg/<name>.svg` files
+rendering it would produce an empty texture and call it success. The standalone `marks/svg/<name>.svg` files
 are the ones to rasterize.
 
 **AVIF is deliberately out.** The `image` crate can only decode it through libdav1d, a C library, and
