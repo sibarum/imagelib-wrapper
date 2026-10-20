@@ -3,3 +3,4 @@ native/dist/
 native/imagelib/target/
 .idea/
 *.iml
+.claude/
