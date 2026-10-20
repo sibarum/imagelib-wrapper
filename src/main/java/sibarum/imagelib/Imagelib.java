@@ -7,6 +7,8 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Pixels, from anything.
@@ -149,16 +151,33 @@ public final class Imagelib {
         if (handle == null || handle.address() == 0) {
             throw new ImageException("could not open the animation: " + lastError());
         }
+        return adopt(handle, Animation::new, Imagelib::closeAnimation);
+    }
+
+    /**
+     * {@code wrap} a handle that has just opened, or, if wrapping it throws anything (a downcall failing while the
+     * timeline is read, no memory for a delay table a damaged file declared huge), {@code free} it before the throw
+     * goes on. The caller has nothing to close until the wrapper exists, so until then this is the only place that
+     * can.
+     */
+    static <T> T adopt(MemorySegment handle, Function<MemorySegment, T> wrap, Consumer<MemorySegment> free) {
         try {
-            return new Animation(handle);
-        } catch (RuntimeException e) {
+            return wrap.apply(handle);
+        } catch (Throwable t) {
             try {
-                CApi.img_anim_close.invokeExact(handle);
-            } catch (Throwable t) {
-                e.addSuppressed(t);
+                free.accept(handle);
+            } catch (Throwable u) {
+                t.addSuppressed(u);
             }
-            throw e;
+            throw t;
         }
+    }
+
+    static void closeAnimation(MemorySegment handle) {
+        call(() -> {
+            CApi.img_anim_close.invokeExact(handle);
+            return null;
+        }, "img_anim_close");
     }
 
     /** {@link #animate(byte[])} of a file's contents. */

@@ -7,10 +7,17 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -102,6 +109,69 @@ class AnimationTest {
     @Test
     void bytesNoDecoderKnowsAreRefused() {
         assertThrows(ImageException.class, () -> Imagelib.animate(new byte[] {1, 2, 3, 4, 5, 6, 7, 8}));
+    }
+
+    /**
+     * Once the native open has succeeded, nothing else can close the handle if the {@code Animation} around it then
+     * fails to be made, so the open path must, whatever the failure. It is put in by hand: a file that opens never
+     * fails the timeline reads that follow.
+     */
+    @Test
+    void aHandleWhoseAnimationFailsToBeMadeIsClosed() throws Throwable {
+        for (Throwable failure : List.of(new ImageException("the timeline would not read"),
+                new OutOfMemoryError("no room for the delays"))) {
+            MemorySegment handle = rawOpen(resource("anim3.gif"));
+            List<MemorySegment> freed = new ArrayList<>();
+            Throwable e = assertThrows(Throwable.class, () -> Imagelib.adopt(handle, h -> {
+                throw sneaky(failure);
+            }, h -> {
+                freed.add(h);
+                Imagelib.closeAnimation(h);
+            }));
+            assertSame(failure, e, "the failure goes on as it was");
+            assertEquals(List.of(handle), freed);
+        }
+    }
+
+    @Test
+    void aCloseThatFailsTooIsKeptBesideTheFirstFailure() throws Throwable {
+        MemorySegment handle = rawOpen(resource("anim3.gif"));
+        ImageException first = new ImageException("first");
+        ImageException e = assertThrows(ImageException.class, () -> Imagelib.adopt(handle, h -> {
+            throw first;
+        }, h -> {
+            Imagelib.closeAnimation(h);
+            throw new ImageException("the close failed too");
+        }));
+        assertSame(first, e);
+        assertEquals("the close failed too", e.getSuppressed()[0].getMessage());
+    }
+
+    @Test
+    void anAnimationThatIsMadeKeepsItsHandle() throws Throwable {
+        List<MemorySegment> freed = new ArrayList<>();
+        try (Animation a = Imagelib.adopt(rawOpen(resource("anim3.gif")), Animation::new, freed::add)) {
+            assertEquals(3, a.count());
+            assertTrue(freed.isEmpty());
+        }
+    }
+
+    /** The native open alone, with no {@code Animation} made around it. */
+    private static MemorySegment rawOpen(byte[] bytes) throws Throwable {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment in = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+            MemorySegment handle = (MemorySegment) CApi.img_anim_open.invokeExact(in, (long) bytes.length);
+            assertNotEquals(0, handle.address(), "the fixture opens");
+            return handle;
+        }
+    }
+
+    /** {@code t} as an unchecked throw, Error or RuntimeException as it is. */
+    private static RuntimeException sneaky(Throwable t) {
+        if (t instanceof Error e) {
+            throw e;
+        }
+        return (RuntimeException) t;
     }
 
     private static byte[] resource(String name) {

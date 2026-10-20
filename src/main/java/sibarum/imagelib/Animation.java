@@ -158,10 +158,7 @@ public final class Animation implements AutoCloseable {
             return;
         }
         handle = null;
-        Imagelib.call(() -> {
-            CApi.img_anim_close.invokeExact(h);
-            return null;
-        }, "img_anim_close");
+        Imagelib.closeAnimation(h);
     }
 
     private MemorySegment live() {
