@@ -3,6 +3,8 @@
 Panama (FFM) bindings for one C ABI over every image format a GUI can show. Hand-written downcalls
 over an eleven-function header — no jextract, no JNI, no code generation.
 
+Part of the [VexelRay](https://sibarum.github.io/) stack. Building an application on it? Start at the [developer guide](https://sibarum.github.io/vexelray-framework/developers/).
+
 ```java
 byte[] bytes = Files.readAllBytes(path);
 Frames frames = switch (Imagelib.probe(bytes)) {
