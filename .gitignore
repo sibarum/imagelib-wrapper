@@ -1,6 +1,8 @@
 target/
+target-linux/
 native/dist/
 native/imagelib/target/
+native/imagelib/target-linux/
 .idea/
 *.iml
 .claude/

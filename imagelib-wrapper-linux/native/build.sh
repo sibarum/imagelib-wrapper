@@ -5,6 +5,9 @@
 #   TARGET=aarch64-unknown-linux-gnu ./native/build.sh   # cross-compile (rustup target add <triple> first)
 set -euo pipefail
 cd "$(dirname "$0")"
+# cargo's build tree of its own, as Maven's is (target-linux/): a Windows host building the same checkout uses
+# native/imagelib/target, and the two would otherwise rebuild over each other.
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$(cd ../../native && pwd)/imagelib/target-linux}"
 . ../../native/common.sh
 
 case "$(triple)" in
