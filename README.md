@@ -77,13 +77,20 @@ was exactly that trade — no Lottie, but no C toolchain either.
 ```
 native/include/imagelib.h    the contract: 11 functions, 1 opaque handle, no struct crosses
 native/imagelib/src/lib.rs   the Rust behind it — `image` for raster, `resvg` for vector
-native/build.sh              cargo build + stage into native/dist/bin/<platform>/
-src/main/java/sibarum/imagelib/
-    Imagelib.java            the two verbs, the probe, and taking the pixels out
-    Frames.java              what every format decodes to
-    CApi.java                one line per header function
-    NativeLib.java           find, extract, load
+native/common.sh             the cargo build every OS module's build.sh shares
+imagelib-wrapper/            the Java API, with no platform knowledge
+    src/main/java/sibarum/imagelib/
+        Imagelib.java        the two verbs, the probe, and taking the pixels out
+        Frames.java          what every format decodes to
+        CApi.java            one line per header function
+        NativeLib.java       find, extract, load
+imagelib-wrapper-api/        ImagelibNatives: where an OS module's library is
+imagelib-wrapper-windows/    native/build.sh stages native/dist/windows-x86_64/imagelib.dll
+imagelib-wrapper-linux/      native/build.sh stages native/dist/linux-<arch>/libimagelib.so
 ```
+
+Each OS module bundles only its own platform's library, and `imagelib-wrapper`'s OS-activated profile puts the
+right one on the class path. A new OS is a new `imagelib-wrapper-<os>` module and a profile; nothing else changes.
 
 `CApi` and `NativeLib` are package-private on purpose: the ABI is an implementation detail of four
 public types, not a second API.
@@ -96,12 +103,12 @@ so there is no C dependency to find, no cmake, no MSYS2, and cross-compiling is 
 rather not have those, `rustup toolchain install stable-x86_64-pc-windows-gnu` brings its own linker.)
 
 ```bash
-./native/build.sh    # stages native/dist/bin/<platform>/
-mvn install          # bundles it into the jar; tests need --enable-native-access (surefire is set up)
+./imagelib-wrapper-linux/native/build.sh      # or -windows/native/build.sh, from Git Bash
+mvn install          # bundles it into the OS module's jar; tests need --enable-native-access (surefire is set up)
 ```
 
-Cross-compile with `rustup target add <triple>` and `TARGET=<triple> ./native/build.sh`. Add the
-triple to the `case` in `build.sh` and to `NativeLib.platform()` — in both places or in neither.
+Cross-compile with `rustup target add <triple>` and `TARGET=<triple> ./imagelib-wrapper-linux/native/build.sh`.
+`CARGO_TARGET_DIR` is honoured, which keeps cargo's large build tree off a VM's shared folder.
 
 At runtime the library is extracted from the jar to a temp dir and loaded. Override with
 `-Dimagelib.native.dir=<dir>`. Callers need `--enable-native-access=ALL-UNNAMED` (or their module).
@@ -109,11 +116,11 @@ At runtime the library is extracted from the jar to a temp dir and loaded. Overr
 ### In a native image
 
 A GraalVM native image can link imagelib in rather than extract the DLL, so the executable is the only file.
-`build.sh` also stages the static library and the arguments that link it (MSVC so far):
+The Windows module's `build.sh` also stages the static library and the arguments that link it (MSVC so far):
 
 ```
-native/dist/static/windows-x86_64/imagelib.lib
-native/dist/static/windows-x86_64/imagelib-link.args
+imagelib-wrapper-windows/native/static/windows-x86_64/imagelib.lib
+imagelib-wrapper-windows/native/static/windows-x86_64/imagelib-link.args
 ```
 
 Pass both to `native-image`, beside `-H:+ForeignAPISupport`:

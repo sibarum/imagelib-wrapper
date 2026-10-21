@@ -5,18 +5,26 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>sibarum.imagelib</groupId>
-    <artifactId>imagelib-wrapper</artifactId>
+    <artifactId>imagelib-wrapper-parent</artifactId>
     <version>0.1.2-SNAPSHOT</version>
+    <packaging>pom</packaging>
 
-    <name>imagelib-wrapper</name>
+    <name>imagelib-wrapper-parent</name>
     <description>
-        Panama (FFM) bindings for one C ABI over every image format a GUI can show: PNG, JPEG, GIF,
-        WebP, BMP, ICO, TIFF, TGA, PNM and QOI through the Rust `image` crate, and SVG through resvg.
-        Stills and animations decode to the same value. Hand-written downcalls over an eleven-function
-        header (native/include/imagelib.h) — no jextract, no JNI, no code generation. The native
-        library is built from source in native/ (see native/build.sh) and bundled into the jar from
-        native/dist/bin at package time; at runtime it is extracted to a temp dir and loaded.
+        Image decoding through Rust, as modules: imagelib-wrapper (the Java API, holding no platform knowledge), and
+        one imagelib-wrapper-&lt;os&gt; module per operating system with that OS's build of the imagelib library. The
+        crate's source is shared, in native/; each OS module builds it with its own native/build.sh.
     </description>
+
+    <modules>
+        <!-- Where an OS module's library is, as an interface the facade and the OS modules share. -->
+        <module>imagelib-wrapper-api</module>
+        <!-- The OS halves: each bundles only its own platform's library. imagelib-wrapper's profiles add one. -->
+        <module>imagelib-wrapper-windows</module>
+        <module>imagelib-wrapper-linux</module>
+        <!-- The library vexelray-codec and vexelray-gui depend on, under the artifactId they already name. -->
+        <module>imagelib-wrapper</module>
+    </modules>
 
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
@@ -24,30 +32,56 @@
         <junit.version>5.11.4</junit.version>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>sibarum.imagelib</groupId>
+                <artifactId>imagelib-wrapper-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>sibarum.imagelib</groupId>
+                <artifactId>imagelib-wrapper-windows</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>sibarum.imagelib</groupId>
+                <artifactId>imagelib-wrapper-linux</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <!-- Bundle the native build output (not committed to git) into the jar, keeping the
-                 per-platform directory names build.sh stages into and NativeLib.java reads back. -->
-            <resource>
-                <directory>native/dist/bin</directory>
-                <targetPath>natives</targetPath>
-            </resource>
-        </resources>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                    <configuration>
+                        <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
-            <!-- Stamps this build with the exact source of its binaries (the commit, plus a digest of any uncommitted
-                 change), so whatever is built on it knows what it was built from. See vexelray-build/README.md. -->
+            <!-- Stamps every module with the exact source of its binaries (the commit, plus a digest of any
+                 uncommitted change), so whatever is built on it knows what it was built from. See
+                 vexelray-build/README.md. -->
             <plugin>
                 <groupId>dev.vexelray.build</groupId>
                 <artifactId>vexelray-build-maven-plugin</artifactId>
@@ -59,23 +93,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <target>${maven.compiler.release}</target>
-                    <release>${maven.compiler.release}</release>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.2</version>
-                <configuration>
-                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
-                </configuration>
             </plugin>
         </plugins>
     </build>

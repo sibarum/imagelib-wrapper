@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>sibarum.imagelib</groupId>
+        <artifactId>imagelib-wrapper-parent</artifactId>
+        <version>0.1.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>imagelib-wrapper</artifactId>
+
+    <name>imagelib-wrapper</name>
+    <description>
+        Panama (FFM) bindings for one C ABI over every image format a GUI can show: PNG, JPEG, GIF,
+        WebP, BMP, ICO, TIFF, TGA, PNM and QOI through the Rust `image` crate, and SVG through resvg.
+        Stills and animations decode to the same value. Hand-written downcalls over an eleven-function
+        header (native/include/imagelib.h) — no jextract, no JNI, no code generation. Holds no platform
+        knowledge: the library for this OS comes from the imagelib-wrapper-&lt;os&gt; module the profiles
+        below add, which says where it is (ImagelibNatives); at runtime it is extracted to a temp dir and
+        loaded.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>sibarum.imagelib</groupId>
+            <artifactId>imagelib-wrapper-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- Exactly one OS module, picked by the build host's OS, so every application on this library gets its
+         platform's imagelib without naming it. -->
+    <profiles>
+        <profile>
+            <id>platform-windows</id>
+            <activation><os><family>windows</family></os></activation>
+            <dependencies>
+                <dependency>
+                    <groupId>sibarum.imagelib</groupId>
+                    <artifactId>imagelib-wrapper-windows</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>platform-linux</id>
+            <activation><os><family>unix</family><name>linux</name></os></activation>
+            <dependencies>
+                <dependency>
+                    <groupId>sibarum.imagelib</groupId>
+                    <artifactId>imagelib-wrapper-linux</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

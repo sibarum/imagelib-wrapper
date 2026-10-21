@@ -4,3 +4,5 @@ native/imagelib/target/
 .idea/
 *.iml
 .claude/
+*/native/dist/
+*/native/static/

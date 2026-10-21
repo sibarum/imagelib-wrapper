@@ -1,19 +1,22 @@
 package sibarum.imagelib;
 
+import sibarum.imagelib.spi.ImagelibNatives;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.SymbolLookup;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Locale;
+import java.util.ServiceLoader;
 
 /**
  * Locates and loads the {@code imagelib} native library.
  *
  * <p>Search order: the library already linked into the executable, then the {@code imagelib.native.dir}
- * system property (a directory holding the library), then the bundled classpath resource under
- * {@code /natives/<platform>/}, extracted to a temp directory. Loading is idempotent and thread-safe.
+ * system property (a directory holding the library), then the classpath resource the OS module on the class
+ * path names ({@link ImagelibNatives}), extracted to a temp directory. Loading is idempotent and thread-safe.
+ * This class holds no platform knowledge of its own.
  *
  * <p>Linked in is the GraalVM native image built with the static library (README, "In a native
  * image"): its symbols are in the executable, where the loader lookup finds them, and there is no DLL
@@ -34,9 +37,9 @@ final class NativeLib {
             loaded = true;   // linked into this executable
             return;
         }
-        String name = libraryName();
         String dir = System.getProperty("imagelib.native.dir");
         try {
+            String name = libraryName();
             Path base = dir != null ? Path.of(dir) : extractBundled(name);
             System.load(base.resolve(name).toAbsolutePath().toString());
         } catch (IOException | UnsatisfiedLinkError e) {
@@ -45,39 +48,35 @@ final class NativeLib {
         loaded = true;
     }
 
-    /**
-     * The directory name a build stages into and this loader reads back — {@code native/build.sh}
-     * writes exactly these, so a new target is added in both places or in neither.
-     */
+    /** What the OS module calls this platform, for messages. */
     static String platform() {
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
-        String family = os.contains("win") ? "windows"
-                : os.contains("mac") || os.contains("darwin") ? "macos"
-                : os.contains("linux") ? "linux"
-                : os.isEmpty() ? "unknown" : os.split("\\s+")[0];
-        String cpu = switch (arch) {
-            case "amd64", "x86_64" -> "x86_64";
-            case "aarch64", "arm64" -> "aarch64";
-            default -> arch;
-        };
-        return family + "-" + cpu;
+        ImagelibNatives natives = natives();
+        return natives == null ? "unknown (no imagelib-wrapper OS module on the class path)" : natives.platform();
     }
 
-    private static String libraryName() {
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) {
-            return "imagelib.dll";
+    /** The one OS module on the class path, or null when there is none. */
+    private static ImagelibNatives natives() {
+        return ServiceLoader.load(ImagelibNatives.class).findFirst().orElse(null);
+    }
+
+    private static String libraryName() throws IOException {
+        ImagelibNatives natives = natives();
+        if (natives == null) {
+            throw new IOException("no imagelib for " + platform() + " (add the imagelib-wrapper OS module for it)");
         }
-        return os.contains("mac") || os.contains("darwin") ? "libimagelib.dylib" : "libimagelib.so";
+        return natives.fileName();
     }
 
     private static Path extractBundled(String name) throws IOException {
-        String resource = "/natives/" + platform() + "/" + name;
+        ImagelibNatives natives = natives();
+        String resource = natives == null ? null : natives.resource();
+        if (resource == null) {
+            throw new IOException("no bundled imagelib for " + platform() + " (set -Dimagelib.native.dir)");
+        }
         try (InputStream in = NativeLib.class.getResourceAsStream(resource)) {
             if (in == null) {
                 throw new IOException("bundled native missing: " + resource
-                        + " (build it first — see native/build.sh — or set -Dimagelib.native.dir)");
+                        + " (build it first with the OS module's native/build.sh, or set -Dimagelib.native.dir)");
             }
             Path tmp = Files.createTempDirectory("imagelib");
             tmp.toFile().deleteOnExit();
