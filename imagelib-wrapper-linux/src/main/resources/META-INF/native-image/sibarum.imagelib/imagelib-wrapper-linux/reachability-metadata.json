@@ -1,0 +1,9 @@
+{
+  "comment": [
+    "The bundled libimagelib.so, a resource of the image: NativeLib extracts it at the first decode, as it does from",
+    "the jar. Windows links imagelib into the executable instead; Linux has no static library to link."
+  ],
+  "resources": [
+    { "glob": "natives/linux-x86_64/libimagelib.so" }
+  ]
+}
